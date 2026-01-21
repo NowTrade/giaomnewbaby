@@ -5,9 +5,10 @@ import { createContext, useContext, useState, type ReactNode } from "react"
 type UserType = "guest" | "customer" | "seller" | "admin"
 
 interface User {
-  type: UserType
-  name: string
-  email: string
+  id: string; // Added user ID for database queries
+  type: UserType;
+  name: string;
+  email: string;
 }
 
 interface UserContextType {
@@ -18,10 +19,10 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined)
 
 const userProfiles: Record<UserType, User> = {
-  guest: { type: "guest", name: "Guest", email: "" },
-  customer: { type: "customer", name: "John Doe", email: "john@example.com" },
-  seller: { type: "seller", name: "Jane Smith", email: "jane@seller.com" },
-  admin: { type: "admin", name: "Admin User", email: "admin@giaom.com" },
+  guest: { id: "0", type: "guest", name: "Guest", email: "" },
+  customer: { id: "1", type: "customer", name: "John Doe", email: "john@example.com" },
+  seller: { id: "2", type: "seller", name: "Jane Smith", email: "jane@seller.com" },
+  admin: { id: "3", type: "admin", name: "Admin User", email: "admin@giaom.com" },
 }
 
 export function UserProvider({ children }: { children: ReactNode }) {

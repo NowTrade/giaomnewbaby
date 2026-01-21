@@ -1,11 +1,16 @@
+"use client";
+
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Package, Heart, MapPin, CreditCard, User } from "lucide-react"
+import { useRouter } from 'next/navigation';
 
 export default function CustomerProfilePage() {
+  const router = useRouter();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -94,7 +99,9 @@ export default function CustomerProfilePage() {
                   <CardDescription>Manage your payment options</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button>Add Payment Method</Button>
+                  <Button onClick={() => router.push('/profile/customer/add-payment')}>
+                    Add Payment Method
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>

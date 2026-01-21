@@ -1,4 +1,6 @@
 -- Create profiles table
+CREATE SCHEMA IF NOT EXISTS auth;
+
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT,
@@ -21,22 +23,3 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 
 CREATE POLICY "Users can insert own profile" ON public.profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
-
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-async function testDatabaseConnection() {
-  const { data, error } = await supabase.from('test_table').select('*').limit(1);
-
-  if (error) {
-    console.error('Error connecting to the database:', error);
-  } else {
-    console.log('Database connection successful. Sample data:', data);
-  }
-}
-
-testDatabaseConnection();
