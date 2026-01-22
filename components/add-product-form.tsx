@@ -29,20 +29,41 @@ export function AddProductForm({ userId }: { userId: string }) {
     setIsLoading(true)
     setError(null)
 
-    const supabase = createClient()
+    if (!userId) {
+      console.error("User ID is missing. Ensure the authenticated user's ID is passed to the AddProductForm.");
+      setError("User ID is missing. Please contact support.");
+      setIsLoading(false);
+      return;
+    }
+
+    const supabase = createClient();
+
+    if (!supabase) {
+      console.error("Supabase client is not configured. Check your environment variables.");
+      setError("Supabase client is not configured. Please contact support.");
+      setIsLoading(false);
+      return;
+    }
+
+    const payload = {
+      seller_id: userId,
+      title,
+      description,
+      price: Number.parseFloat(price),
+      category,
+      image_url: imageUrl || "/placeholder.svg?height=400&width=400",
+      status: "pending",
+    }
+
+    console.log("Payload being sent to Supabase:", payload)
 
     try {
-      const { error: insertError } = await supabase.from("products").insert({
-        seller_id: userId,
-        title,
-        description,
-        price: Number.parseFloat(price),
-        category,
-        image_url: imageUrl || "/placeholder.svg?height=400&width=400",
-        status: "pending",
-      })
+      const { error: insertError } = await supabase.from("products").insert(payload)
 
-      if (insertError) throw insertError
+      if (insertError) {
+        console.error("Error inserting product:", insertError)
+        throw insertError
+      }
 
       setTitle("")
       setDescription("")

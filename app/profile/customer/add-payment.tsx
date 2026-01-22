@@ -9,16 +9,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/lib/user-context';
 
+interface PaymentMethod {
+  id: number;
+  cardNumber: string;
+  expiryDate: string;
+  cvv: string;
+  cardHolderName: string;
+  submitted: boolean;
+}
+
 const AddPayment = () => {
   const { user } = useUser();
-  const [paymentMethods, setPaymentMethods] = useState([
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
     { id: Date.now(), cardNumber: '', expiryDate: '', cvv: '', cardHolderName: '', submitted: false },
   ]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [methodToRemove, setMethodToRemove] = useState<number | null>(null);
 
   const handleAddMethod = () => {
-    setPaymentMethods((prev) => [
+    setPaymentMethods((prev: PaymentMethod[]) => [
       ...prev,
       { id: Date.now(), cardNumber: '', expiryDate: '', cvv: '', cardHolderName: '', submitted: false },
     ]);
@@ -26,14 +35,14 @@ const AddPayment = () => {
 
   const handleRemoveMethod = () => {
     if (methodToRemove !== null) {
-      setPaymentMethods((prev) => prev.filter((method) => method.id !== methodToRemove));
+      setPaymentMethods((prev: PaymentMethod[]) => prev.filter((method) => method.id !== methodToRemove));
       setShowConfirmDialog(false);
       setMethodToRemove(null);
     }
   };
 
-  const handleInputChange = (id: number, field: string, value: string) => {
-    setPaymentMethods((prev) =>
+  const handleInputChange = (id: number, field: keyof PaymentMethod, value: string) => {
+    setPaymentMethods((prev: PaymentMethod[]) =>
       prev.map((method) => (method.id === id ? { ...method, [field]: value } : method))
     );
   };
@@ -61,7 +70,7 @@ const AddPayment = () => {
 
     console.log('Payment method saved successfully:', data);
 
-    setPaymentMethods((prev) =>
+    setPaymentMethods((prev: PaymentMethod[]) =>
       prev.map((m) => (m.id === id ? { ...m, submitted: true } : m))
     );
   };

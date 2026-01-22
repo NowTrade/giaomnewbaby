@@ -40,36 +40,69 @@ ALTER TABLE seller_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
-CREATE POLICY "Users can view their own profile" ON profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can insert their own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Users can update their own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+CREATE POLICY "Users can view their own profile" ON profiles FOR SELECT USING (current_setting('app.current_user_id')::UUID = id);
+CREATE POLICY "Users can insert their own profile" ON profiles FOR INSERT WITH CHECK (current_setting('app.current_user_id')::UUID = id);
+CREATE POLICY "Users can update their own profile" ON profiles FOR UPDATE USING (current_setting('app.current_user_id')::UUID = id);
+
+-- Fix infinite recursion in the "Admins can view all profiles" policy
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
+
+CREATE POLICY "Admins can view all profiles" ON profiles
+FOR SELECT USING (
+  current_setting('app.current_user_role') = 'admin'
 );
 
 -- Seller profiles policies
-CREATE POLICY "Users can view their own seller profile" ON seller_profiles FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert their own seller profile" ON seller_profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own seller profile" ON seller_profiles FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Admins can view all seller profiles" ON seller_profiles FOR SELECT USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+CREATE POLICY "Users can view their own seller profile" ON seller_profiles FOR SELECT USING (current_setting('app.current_user_id')::UUID = user_id);
+CREATE POLICY "Users can insert their own seller profile" ON seller_profiles FOR INSERT WITH CHECK (current_setting('app.current_user_id')::UUID = user_id);
+CREATE POLICY "Users can update their own seller profile" ON seller_profiles FOR UPDATE USING (current_setting('app.current_user_id')::UUID = user_id);
+
+-- Fix potential recursion in seller_profiles policies
+DROP POLICY IF EXISTS "Admins can view all seller profiles" ON seller_profiles;
+DROP POLICY IF EXISTS "Admins can update seller profiles" ON seller_profiles;
+
+CREATE POLICY "Admins can view all seller profiles" ON seller_profiles
+FOR SELECT USING (
+  current_setting('app.current_user_role') = 'admin'
 );
-CREATE POLICY "Admins can update seller profiles" ON seller_profiles FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+
+CREATE POLICY "Admins can update seller profiles" ON seller_profiles
+FOR UPDATE USING (
+  current_setting('app.current_user_role') = 'admin'
 );
 
 -- Products policies
+-- Ensure policies for products table are recreated without errors
+DROP POLICY IF EXISTS "Everyone can view approved products" ON products;
+DROP POLICY IF EXISTS "Sellers can view their own products" ON products;
+DROP POLICY IF EXISTS "Sellers can insert their own products" ON products;
+DROP POLICY IF EXISTS "Sellers can update their own products" ON products;
+DROP POLICY IF EXISTS "Sellers can delete their own products" ON products;
+
 CREATE POLICY "Everyone can view approved products" ON products FOR SELECT USING (status = 'approved');
-CREATE POLICY "Sellers can view their own products" ON products FOR SELECT USING (auth.uid() = seller_id);
-CREATE POLICY "Sellers can insert their own products" ON products FOR INSERT WITH CHECK (auth.uid() = seller_id);
-CREATE POLICY "Sellers can update their own products" ON products FOR UPDATE USING (auth.uid() = seller_id);
-CREATE POLICY "Sellers can delete their own products" ON products FOR DELETE USING (auth.uid() = seller_id);
-CREATE POLICY "Admins can view all products" ON products FOR SELECT USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+CREATE POLICY "Sellers can view their own products" ON products FOR SELECT USING (current_setting('app.current_user_id')::UUID = seller_id);
+CREATE POLICY "Sellers can insert their own products" ON products FOR INSERT WITH CHECK (current_setting('app.current_user_id')::UUID = seller_id);
+CREATE POLICY "Sellers can update their own products" ON products FOR UPDATE USING (current_setting('app.current_user_id')::UUID = seller_id);
+CREATE POLICY "Sellers can delete their own products" ON products FOR DELETE USING (current_setting('app.current_user_id')::UUID = seller_id);
+
+-- Fix potential recursion in "Admins can view all products" policy
+DROP POLICY IF EXISTS "Admins can view all products" ON products;
+
+CREATE POLICY "Admins can view all products" ON products
+FOR SELECT USING (
+  current_setting('app.current_user_role') = 'admin'
 );
-CREATE POLICY "Admins can update all products" ON products FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+
+-- Fix potential recursion in "Admins can approve products" policy
+DROP POLICY IF EXISTS "Admins can approve products" ON products;
+
+CREATE POLICY "Admins can approve products" ON products
+FOR UPDATE USING (
+  current_setting('app.current_user_role') = 'admin'
 );
+
+-- Modify default status for new products to 'pending'
+ALTER TABLE products ALTER COLUMN status SET DEFAULT 'pending';
 
 -- Create function to handle new user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -83,8 +116,8 @@ BEGIN
   VALUES (
     new.id,
     new.email,
-    COALESCE(new.raw_user_meta_data->>'full_name', ''),
-    COALESCE(new.raw_user_meta_data->>'role', 'customer')
+    '', -- Default full_name to an empty string
+    'customer' -- Default role to 'customer'
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN new;

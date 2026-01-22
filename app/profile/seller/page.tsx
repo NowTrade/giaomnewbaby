@@ -21,6 +21,21 @@ export default function SellerProfilePage() {
   const { user } = useUser()
 
   useEffect(() => {
+    const supabase = createClient();
+
+    if (!supabase) {
+      console.error("Supabase client is not initialized.");
+      return;
+    }
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.error("Error retrieving session:", error);
+      } else {
+        console.log("[v0] Current session:", data.session);
+      }
+    });
+
     async function loadData() {
       console.log("[v0] Loading seller profile data")
       const supabase = createClient()
@@ -40,14 +55,23 @@ export default function SellerProfilePage() {
       try {
         const {
           data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) {
-          console.log("[v0] No user found - using demo mode")
-          setSupabaseConfigured(false)
-          return
+          error: userError
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("Error fetching user:", userError);
+          setSupabaseConfigured(false);
+          return;
         }
 
-        setUserId(user.id)
+        if (!user) {
+          console.log("[v0] No user found - using demo mode");
+          setSupabaseConfigured(false);
+          return;
+        }
+
+        console.log("[v0] User ID:", user.id);
+        setUserId(user.id);
 
         const { data: profile } = await supabase.from("seller_profiles").select("*").eq("user_id", user.id).single()
         setSellerProfile(profile)
@@ -66,6 +90,30 @@ export default function SellerProfilePage() {
 
     loadData()
   }, [])
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    if (!supabase) {
+      console.error("Supabase client is not initialized.");
+      return;
+    }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[v0] Auth state change event:", event, session);
+      if (event === "SIGNED_IN" && session) {
+        console.log("[v0] User signed in:", session.user);
+        setUserId(session.user.id);
+      } else if (event === "SIGNED_OUT") {
+        console.log("[v0] User signed out");
+        setUserId("");
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -173,7 +221,11 @@ export default function SellerProfilePage() {
             </TabsList>
 
             <TabsContent value="products" className="space-y-4">
-              <AddProductForm userId={userId} />
+              {!userId ? (
+                <p>Loading...</p>
+              ) : (
+                <AddProductForm userId={userId} />
+              )}
               <ProductsList products={products || []} />
             </TabsContent>
 

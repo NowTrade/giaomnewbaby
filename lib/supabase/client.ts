@@ -1,4 +1,4 @@
-import { createBrowserClient } from "@supabase/ssr"
+import { createClient as createSupabaseClient, SupabaseClient } from "@supabase/supabase-js";
 
 // Create a chainable mock query builder
 function createMockQueryBuilder() {
@@ -27,14 +27,30 @@ function createMockQueryBuilder() {
   return builder
 }
 
-export function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // Return null so components can check and use demo data
-    return null
+let supabaseInstance: SupabaseClient | null = null;
+
+export const createClient = (): SupabaseClient | null => {
+  if (supabaseInstance) {
+    return supabaseInstance;
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
-}
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("Supabase environment variables are missing.");
+    return null;
+  }
+
+  supabaseInstance = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: localStorage, // Ensure session is stored in localStorage
+    },
+  });
+
+  console.log("Supabase client initialized.");
+  return supabaseInstance;
+};
